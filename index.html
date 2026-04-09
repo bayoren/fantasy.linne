@@ -156,9 +156,9 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 
 <script>
 // ─── KONFIGURATION ───────────────────────────────────────────
-const APP_API_KEY    = 'AIzaSyDTT6aq98E713lErG0oELA-aL6a_fc7YmA';
-const APP_SHEET_ID   = '1c99g-vmGHrRr9C1TR26eD-x0ZBL6p8FfjqQG9WR9dxU';
-const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPqozjLKC_70KoZRHVcY9TMi0g1gIbU3139ulZt-Qb8uRCz63GEnHOC6B0gnWBscah/exec';
+const APP_API_KEY    = '';
+const APP_SHEET_ID   = '';
+const APP_SCRIPT_URL = '';
 
 let API_KEY    = APP_API_KEY    || localStorage.getItem('fl_api')    || '';
 let SHEET_ID   = APP_SHEET_ID   || localStorage.getItem('fl_sheet')  || '';
@@ -217,10 +217,10 @@ async function loadData() {
       kapten: parseInt(r[13])||null,
     }));
 
-    // A=OmgångID B=Namn C=Aktiv D=Deadline E=Motstånd F=? G=Resultat
+    // A=OmgångID B=Omgång_nr C=Datum D=Deadline E=Motstånd F=Status G=Resultat
     ALL_OMGÅNGAR = omgRows.filter(r => r[0] && r[0] !== 'OmgångID').map(r => ({
-      id: parseInt(r[0]), namn: r[1]||'',
-      aktiv: (r[2]||'').toLowerCase() === 'true' || r[2] === '1',
+      id: parseInt(r[0]), namn: 'Omgång ' + (r[1]||r[0]),
+      aktiv: (r[5]||'').toLowerCase() === 'öppen',
       deadline: r[3]||'', motstånd: r[4]||'', resultat: r[6]||'',
     }));
     AKTIV_OMGÅNG = ALL_OMGÅNGAR.find(o => o.aktiv) || ALL_OMGÅNGAR[ALL_OMGÅNGAR.length-1] || null;
@@ -276,9 +276,8 @@ function showLogin() {
   document.getElementById('nav').classList.remove('visible');
   document.getElementById('page').innerHTML = `
     <div id="welcome">
-      <div class="welcome-logo">⚽</div>
+      <img src="logo.png" alt="IF Linné" style="width:130px;height:auto;margin:0 auto;display:block;">
       <div class="welcome-title">Fantasy IF Linné</div>
-      <div class="welcome-sub">Bygg din start-sexa och utmana vännerna</div>
       <div class="welcome-btns">
         <button class="btn-primary" onclick="showLoginForm()">Logga in</button>
         <button class="btn-secondary" onclick="showRegister()">Skapa konto</button>
