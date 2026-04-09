@@ -694,7 +694,7 @@ function renderLiga() {
     const medal=r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
     const me = currentUser && l.lagnamn===currentUser.lagnamn;
     const omgCells = omgNamn.map(n => { const o=l.omgångar.find(x=>x.namn===n); return `<td style="text-align:center;">${o?o.poäng:'–'}</td>`; }).join('');
-    return `<tr style="${me?'background:#2d0d12;':''}">
+    return `<tr style="cursor:pointer;${me?'background:#2d0d12;':''}" onclick="showLagDetalj(${JSON.stringify(l.lagnamn)})">
       <td><span class="${cls}">${medal}</span></td>
       <td style="font-weight:600;">${esc(l.lagnamn)}</td>
       <td style="color:var(--muted);font-size:0.82rem;">${esc(l.användarnamn)}</td>
@@ -712,6 +712,77 @@ function renderLiga() {
           <th style="color:var(--green);">Totalt</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
+    </div>`;
+}
+
+// ─── LAGDETALJ ────────────────────────────────────────────────
+function showLagDetalj(lagnamn) {
+  const anv = ALL_ANVÄNDARE.find(u => u.lagnamn === lagnamn);
+  if (!anv) return;
+
+  const userLag = ALL_LAG.filter(l => l.användarId === anv.userId);
+  // Visa aktiv omgångs lag, annars senaste
+  const lagRow = (AKTIV_OMGÅNG && userLag.find(l => l.omgångId === AKTIV_OMGÅNG.id))
+    || userLag.sort((a,b) => b.omgångId - a.omgångId)[0]
+    || null;
+
+  const totalPoäng = userLag.reduce((sum,l) => sum + calcTotalPoäng(l), 0);
+  const omgPoäng  = lagRow ? calcTotalPoäng(lagRow) : 0;
+  const kaptenSp  = lagRow?.kapten ? ALL_SPELARE.find(s => s.id === lagRow.kapten) : null;
+  const omgNamn   = lagRow ? (ALL_OMGÅNGAR.find(o => o.id === lagRow.omgångId)?.namn || '') : '';
+
+  const pitchRows = [
+    { label:'Anfallare', slots:['ANF'] },
+    { label:'Mittfält',  slots:['MID1','MID2'] },
+    { label:'Back',      slots:['BACK1','BACK2'] },
+    { label:'Målvakt',   slots:['MV'] },
+  ];
+
+  const pitchHtml = lagRow ? pitchRows.map(row => `
+    <div class="pitch-row-label">${row.label}</div>
+    <div class="pitch-row">
+      ${row.slots.map(pos => {
+        const spId = lagRow[pos];
+        const sp   = spId ? ALL_SPELARE.find(s => s.id === spId) : null;
+        const isK  = spId && spId === lagRow.kapten;
+        if (sp) return `<div class="p-slot">
+          <div class="p-avatar filled">👤${isK ? '<div class="p-captain">C</div>' : ''}</div>
+          <div class="p-name">${esc(sp.namn.split(' ')[0])}</div>
+          <div class="p-sub">${sp.pris}M</div>
+        </div>`;
+        return `<div class="p-slot">
+          <div class="p-avatar"></div>
+          <div class="p-name" style="color:rgba(255,255,255,0.3);">–</div>
+        </div>`;
+      }).join('')}
+    </div>`).join('') : '';
+
+  document.getElementById('page').innerHTML = `
+    <div class="card">
+      <button class="btn-back" onclick="renderLiga()">← Tillbaka</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+        <div style="font-size:2.5rem;">⚽</div>
+        <div>
+          <h2 style="font-size:1.3rem;">${esc(anv.lagnamn)}</h2>
+          <div style="color:var(--muted);">Tränare: ${esc(anv.namn)}</div>
+          ${kaptenSp ? `<div style="color:var(--yellow);font-size:0.85rem;">⭐ Kapten: ${esc(kaptenSp.namn)}</div>` : ''}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <div style="background:var(--bg);border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <div style="font-size:0.72rem;color:var(--muted);">Totalpoäng</div>
+          <div style="font-size:1.5rem;font-weight:700;color:var(--green);">${totalPoäng}</div>
+        </div>
+        <div style="background:var(--bg);border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <div style="font-size:0.72rem;color:var(--muted);">${esc(omgNamn)}</div>
+          <div style="font-size:1.5rem;font-weight:700;color:var(--yellow);">${omgPoäng}</div>
+        </div>
+      </div>
+
+      ${lagRow
+        ? `<div class="pitch-wrap">${pitchHtml}</div>`
+        : '<div class="empty-state">Inget lag sparat för aktiv omgång.</div>'}
     </div>`;
 }
 
