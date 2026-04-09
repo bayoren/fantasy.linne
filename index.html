@@ -694,7 +694,7 @@ function renderLiga() {
     const medal=r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
     const me = currentUser && l.lagnamn===currentUser.lagnamn;
     const omgCells = omgNamn.map(n => { const o=l.omgångar.find(x=>x.namn===n); return `<td style="text-align:center;">${o?o.poäng:'–'}</td>`; }).join('');
-    return `<tr style="cursor:pointer;${me?'background:#2d0d12;':''}" onclick="showLagDetalj(${JSON.stringify(l.lagnamn)})">
+    return `<tr style="cursor:pointer;${me?'background:#2d0d12;':''}" onclick="showLagDetalj('${esc(l.lagnamn)}')">
       <td><span class="${cls}">${medal}</span></td>
       <td style="font-weight:600;">${esc(l.lagnamn)}</td>
       <td style="color:var(--muted);font-size:0.82rem;">${esc(l.användarnamn)}</td>
