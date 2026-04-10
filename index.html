@@ -156,9 +156,9 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 
 <script>
 // ─── KONFIGURATION ───────────────────────────────────────────
-const APP_API_KEY    = 'AIzaSyDTT6aq98E713lErG0oELA-aL6a_fc7YmA';
-const APP_SHEET_ID   = '1c99g-vmGHrRr9C1TR26eD-x0ZBL6p8FfjqQG9WR9dxU';
-const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPqozjLKC_70KoZRHVcY9TMi0g1gIbU3139ulZt-Qb8uRCz63GEnHOC6B0gnWBscah/exec';
+const APP_API_KEY    = '';
+const APP_SHEET_ID   = '';
+const APP_SCRIPT_URL = '';
 
 let API_KEY    = APP_API_KEY    || localStorage.getItem('fl_api')    || '';
 let SHEET_ID   = APP_SHEET_ID   || localStorage.getItem('fl_sheet')  || '';
@@ -195,7 +195,7 @@ async function loadData() {
   try {
     const [spRows, lagRows, omgRows, anvRows, poängRows] = await Promise.all([
       fetchSheet('Spelare!A2:G200'),
-      fetchSheet('Lag!A2:N200'),
+      fetchSheet('Lag!A2:O200'),
       fetchSheet('Omgångar!A2:G30'),
       fetchSheet('Användare!A2:D50'),
       fetchSheet('Spelarpoäng!A4:M500'),
@@ -214,7 +214,7 @@ async function loadData() {
       MV: parseInt(r[5])||null, BACK1: parseInt(r[6])||null, BACK2: parseInt(r[7])||null,
       MID1: parseInt(r[8])||null, MID2: parseInt(r[9])||null, ANF: parseInt(r[10])||null,
       totalpoäng: parseFloat(r[11])||0, budget: parseFloat(r[12])||60,
-      kapten: parseInt(r[13])||null,
+      kapten: parseInt(r[13])||null, senastUppdaterad: r[14]||'',
     }));
 
     // A=OmgångID B=Omgång_nr C=Datum D=Deadline E=Motstånd F=Status G=Resultat
@@ -379,7 +379,8 @@ function showPage(page) {
 // ─── HEM ─────────────────────────────────────────────────────
 function renderHem() {
   const omg = AKTIV_OMGÅNG;
-  const mitLag = omg ? ALL_LAG.find(l => l.användarId===currentUser.userId && l.omgångId===omg.id) : null;
+  const mitLag = omg ? (ALL_LAG.filter(l => l.användarId===currentUser.userId && l.omgångId===omg.id)
+    .sort((a,b) => (b.senastUppdaterad||'').localeCompare(a.senastUppdaterad||''))[0] || null) : null;
   const omgPoäng = mitLag ? calcTotalPoäng(mitLag) : 0; // inkl. kaptensbonus för aktiv omgång
   const liga = getLigaData();
   const pos = liga.findIndex(l => l.lagnamn===currentUser.lagnamn);
@@ -441,7 +442,8 @@ function calcTotalPoäng(lagRow) {
 function renderMittLag() {
   const omg = AKTIV_OMGÅNG;
   if (!omg) { document.getElementById('page').innerHTML='<div class="card"><div class="empty-state">Ingen aktiv omgång.</div></div>'; return; }
-  const existing = ALL_LAG.find(l => l.användarId===currentUser.userId && l.omgångId===omg.id);
+  const existing = ALL_LAG.filter(l => l.användarId===currentUser.userId && l.omgångId===omg.id)
+    .sort((a,b) => (b.senastUppdaterad||'').localeCompare(a.senastUppdaterad||''))[0] || null;
   if (existing) {
     DRAFT_LAG = { MV:existing.MV, BACK1:existing.BACK1, BACK2:existing.BACK2, MID1:existing.MID1, MID2:existing.MID2, ANF:existing.ANF };
     DRAFT_KAPTEN = existing.kapten;
@@ -722,8 +724,11 @@ function showLagDetalj(lagnamn) {
 
   const userLag = ALL_LAG.filter(l => l.användarId === anv.userId);
   // Visa aktiv omgångs lag, annars senaste
-  const lagRow = (AKTIV_OMGÅNG && userLag.find(l => l.omgångId === AKTIV_OMGÅNG.id))
-    || userLag.sort((a,b) => b.omgångId - a.omgångId)[0]
+  const lagRow = (AKTIV_OMGÅNG
+    ? userLag.filter(l => l.omgångId === AKTIV_OMGÅNG.id)
+        .sort((a,b) => (b.senastUppdaterad||'').localeCompare(a.senastUppdaterad||''))[0]
+    : null)
+    || userLag.sort((a,b) => (b.senastUppdaterad||'').localeCompare(a.senastUppdaterad||''))[0]
     || null;
 
   const totalPoäng = userLag.reduce((sum,l) => sum + calcTotalPoäng(l), 0);
