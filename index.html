@@ -156,9 +156,9 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 
 <script>
 // ─── KONFIGURATION ───────────────────────────────────────────
-const APP_API_KEY    = 'AIzaSyDTT6aq98E713lErG0oELA-aL6a_fc7YmA';
-const APP_SHEET_ID   = '1c99g-vmGHrRr9C1TR26eD-x0ZBL6p8FfjqQG9WR9dxU';
-const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPqozjLKC_70KoZRHVcY9TMi0g1gIbU3139ulZt-Qb8uRCz63GEnHOC6B0gnWBscah/exec';
+const APP_API_KEY    = '';
+const APP_SHEET_ID   = '';
+const APP_SCRIPT_URL = '';
 
 let API_KEY    = APP_API_KEY    || localStorage.getItem('fl_api')    || '';
 let SHEET_ID   = APP_SHEET_ID   || localStorage.getItem('fl_sheet')  || '';
@@ -179,6 +179,12 @@ let DRAFT_POSITION = null;
 
 // ─── START ───────────────────────────────────────────────────
 window.onload = () => {
+  const resetToken = new URLSearchParams(window.location.search).get('reset');
+  if (resetToken) {
+    if (API_KEY && SHEET_ID) loadData().then(() => showResetForm(resetToken));
+    else showSetup();
+    return;
+  }
   if (API_KEY && SHEET_ID) loadData().then(showLogin);
   else showSetup();
 };
@@ -295,6 +301,9 @@ function showLoginForm() {
         <div class="form-group"><label>Lösenord</label><input id="li-pw" type="password" autocomplete="current-password"></div>
         <div id="li-msg"></div>
         <button class="btn-form" onclick="doLogin()">Logga in</button>
+        <div style="text-align:center;margin-top:12px;">
+          <button class="btn-back" onclick="showForgotPassword()">Glömt lösenord?</button>
+        </div>
       </div>
     </div>`;
   document.getElementById('li-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
@@ -361,6 +370,95 @@ function logOut() {
   showLogin();
 }
 
+// ─── GLÖMT LÖSENORD ──────────────────────────────────────────
+function showForgotPassword() {
+  document.getElementById('page').innerHTML = `
+    <div style="max-width:400px;margin:0 auto;padding:24px 16px;">
+      <button class="btn-back" onclick="showLoginForm()">← Tillbaka</button>
+      <div class="card">
+        <h2>Glömt lösenord?</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin-bottom:14px;">Ange ditt lagnamn så skickar vi en återställningslänk till din e-post.</p>
+        <div class="form-group"><label>Lagnamn</label><input id="fp-lag" type="text"></div>
+        <div id="fp-msg"></div>
+        <button class="btn-form" onclick="doRequestReset()">Skicka återställningslänk</button>
+      </div>
+    </div>`;
+}
+
+async function doRequestReset() {
+  const lagnamn = document.getElementById('fp-lag').value.trim();
+  const msg = document.getElementById('fp-msg');
+  if (!lagnamn) { msg.innerHTML='<div class="alert alert-error">Ange lagnamn.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-info">Skickar...</div>';
+  try {
+    const d = await (await fetch(`${SCRIPT_URL}?action=requestReset&lagnamn=${enc(lagnamn)}`)).json();
+    if (d.error) { msg.innerHTML=`<div class="alert alert-error">${esc(d.error)}</div>`; return; }
+    msg.innerHTML=`<div class="alert alert-success">✅ ${esc(d.message)}</div>`;
+  } catch(e) { msg.innerHTML=`<div class="alert alert-error">Fel: ${esc(e.message)}</div>`; }
+}
+
+// ─── ÅTERSTÄLL LÖSENORD (via token i URL) ────────────────────
+function showResetForm(token) {
+  document.getElementById('nav').classList.remove('visible');
+  document.getElementById('page').innerHTML = `
+    <div style="max-width:400px;margin:0 auto;padding:24px 16px;">
+      <div class="card">
+        <h2>Nytt lösenord</h2>
+        <div class="form-group"><label>Nytt lösenord</label><input id="rp-pw" type="password" autocomplete="new-password"></div>
+        <div class="form-group"><label>Bekräfta lösenord</label><input id="rp-pw2" type="password" autocomplete="new-password"></div>
+        <div id="rp-msg"></div>
+        <button class="btn-form" onclick="doResetPassword('${token}')">Spara nytt lösenord</button>
+      </div>
+    </div>`;
+}
+
+async function doResetPassword(token) {
+  const pw  = document.getElementById('rp-pw').value;
+  const pw2 = document.getElementById('rp-pw2').value;
+  const msg = document.getElementById('rp-msg');
+  if (!pw || pw.length < 6) { msg.innerHTML='<div class="alert alert-error">Lösenord måste vara minst 6 tecken.</div>'; return; }
+  if (pw !== pw2) { msg.innerHTML='<div class="alert alert-error">Lösenorden matchar inte.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-info">Sparar...</div>';
+  try {
+    const d = await (await fetch(`${SCRIPT_URL}?action=resetPassword&token=${enc(token)}&newPassword=${enc(pw)}`)).json();
+    if (d.error) { msg.innerHTML=`<div class="alert alert-error">${esc(d.error)}</div>`; return; }
+    msg.innerHTML=`<div class="alert alert-success">✅ ${esc(d.message)}</div>`;
+    setTimeout(() => { history.replaceState({}, '', window.location.pathname); showLogin(); }, 2000);
+  } catch(e) { msg.innerHTML=`<div class="alert alert-error">Fel: ${esc(e.message)}</div>`; }
+}
+
+// ─── BYT LÖSENORD (inloggad) ─────────────────────────────────
+function showBytLösenord() {
+  document.getElementById('page').innerHTML = `
+    <div style="max-width:400px;margin:0 auto;padding:24px 16px;">
+      <button class="btn-back" onclick="showPage('hem')">← Tillbaka</button>
+      <div class="card">
+        <h2>Byt lösenord</h2>
+        <div class="form-group"><label>Nuvarande lösenord</label><input id="cp-old" type="password"></div>
+        <div class="form-group"><label>Nytt lösenord</label><input id="cp-new" type="password"></div>
+        <div class="form-group"><label>Bekräfta nytt lösenord</label><input id="cp-new2" type="password"></div>
+        <div id="cp-msg"></div>
+        <button class="btn-form" onclick="doBytLösenord()">Spara</button>
+      </div>
+    </div>`;
+}
+
+async function doBytLösenord() {
+  const oldPw = document.getElementById('cp-old').value;
+  const newPw = document.getElementById('cp-new').value;
+  const newPw2= document.getElementById('cp-new2').value;
+  const msg   = document.getElementById('cp-msg');
+  if (!oldPw || !newPw) { msg.innerHTML='<div class="alert alert-error">Fyll i alla fält.</div>'; return; }
+  if (newPw.length < 6)  { msg.innerHTML='<div class="alert alert-error">Nytt lösenord måste vara minst 6 tecken.</div>'; return; }
+  if (newPw !== newPw2)  { msg.innerHTML='<div class="alert alert-error">Lösenorden matchar inte.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-info">Sparar...</div>';
+  try {
+    const d = await (await fetch(`${SCRIPT_URL}?action=changePassword&userId=${currentUser.userId}&oldPassword=${enc(oldPw)}&newPassword=${enc(newPw)}`)).json();
+    if (d.error) { msg.innerHTML=`<div class="alert alert-error">${esc(d.error)}</div>`; return; }
+    msg.innerHTML=`<div class="alert alert-success">✅ ${esc(d.message)}</div>`;
+  } catch(e) { msg.innerHTML=`<div class="alert alert-error">Fel: ${esc(e.message)}</div>`; }
+}
+
 function updateNav() {
   document.getElementById('nav').classList.add('visible');
   document.getElementById('nav-user').textContent = currentUser?.lagnamn || '';
@@ -406,6 +504,11 @@ function renderHem() {
     </div>
 
     <div class="card">
+      <h2>⚙️ Konto</h2>
+      <button class="btn-secondary" style="width:100%;" onclick="showBytLösenord()">🔑 Byt lösenord</button>
+    </div>
+
+    <div class="card">
       <h2>📅 Omgångar</h2>
       ${ALL_OMGÅNGAR.length===0 ? '<div class="empty-state">Inga omgångar.</div>' :
         ALL_OMGÅNGAR.map(o => `
@@ -416,6 +519,12 @@ function renderHem() {
             ${o.aktiv ? '<span class="omgång-badge aktiv-badge" style="font-size:0.7rem;">Aktiv</span>' : '<span></span>'}
           </div>`).join('')}
     </div>`;
+}
+
+// Summerar alla omgångspoäng för en spelare från ALL_POÄNG
+function getSpelarTotalPoäng(spelarId) {
+  return ALL_POÄNG.filter(p => p.spelarId === spelarId)
+    .reduce((sum, p) => sum + p.omgångspoäng, 0);
 }
 
 // ─── POÄNGBERÄKNING FRÅN ALL_POÄNG ────────────────────────────
@@ -565,7 +674,7 @@ function getSpelarePicker() {
       <div style="font-size:1.5rem;">👤</div>
       <div class="picker-name">${esc(s.namn)}</div>
       <div class="picker-pos">${esc(s.position)}</div>
-      <div class="picker-pts">★ ${s.totalpoäng}p</div>
+      <div class="picker-pts">★ ${getSpelarTotalPoäng(s.id)}p</div>
       <div class="picker-price">💰 ${s.pris}M</div>
     </div>`).join('');
 }
@@ -796,7 +905,8 @@ let spelarFilter = 'Alla';
 function renderSpelare() {
   const pos = ['Alla', ...new Set(ALL_SPELARE.map(s=>s.position))];
   const list = (spelarFilter==='Alla'?ALL_SPELARE:ALL_SPELARE.filter(s=>s.position===spelarFilter))
-    .sort((a,b)=>b.totalpoäng-a.totalpoäng);
+    .map(s => ({...s, _totalpoäng: getSpelarTotalPoäng(s.id)}))
+    .sort((a,b)=>b._totalpoäng-a._totalpoäng);
   document.getElementById('page').innerHTML = `
     <div class="card">
       <h2>👤 Spelare</h2>
@@ -806,7 +916,7 @@ function renderSpelare() {
           <div style="font-size:1.8rem;">👤</div>
           <div class="sp-name">${esc(s.namn)}</div>
           <div class="sp-pos">${esc(s.position)}</div>
-          <div class="sp-pts">★ ${s.totalpoäng}p</div>
+          <div class="sp-pts">★ ${s._totalpoäng}p</div>
           <div class="sp-price">💰 ${s.pris}M</div>
         </div>`).join('')||'<div class="empty-state">Inga spelare.</div>'}
       </div>
@@ -827,7 +937,7 @@ function showSpelarDetalj(id) {
           <div style="color:var(--yellow);font-size:0.85rem;">💰 ${sp.pris}M</div>
         </div>
       </div>
-      <div class="stat-row"><span>Totalpoäng</span><span class="stat-val">${sp.totalpoäng}</span></div>
+      <div class="stat-row"><span>Totalpoäng</span><span class="stat-val">${getSpelarTotalPoäng(sp.id)}</span></div>
       ${poäng.length ? `
         <h3 style="margin:14px 0 8px;color:var(--muted);">Omgångsstatistik</h3>
         <div style="overflow-x:auto;"><table class="liga-table">
