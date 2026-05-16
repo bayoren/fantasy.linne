@@ -157,10 +157,10 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 
 <script>
 // ─── KONFIGURATION ───────────────────────────────────────────
-const APP_API_KEY    = 'AIzaSyDTT6aq98E713lErG0oELA-aL6a_fc7YmA';
-const APP_SHEET_ID   = '1c99g-vmGHrRr9C1TR26eD-x0ZBL6p8FfjqQG9WR9dxU';
-const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgOb2yp7qN4pMBsPKqMrIzw-T9l6TBrL8HfIzOft3zaFauqsSk3dVY1xgrfRIJDQ/exec';
-const APP_ADMIN_PW   = 'hahaha'; // Sätt ett lösenord här för att aktivera adminpanelen
+const APP_API_KEY    = '';
+const APP_SHEET_ID   = '';
+const APP_SCRIPT_URL = '';
+const APP_ADMIN_PW   = ''; // Sätt ett lösenord här för att aktivera adminpanelen
 
 let API_KEY    = APP_API_KEY    || localStorage.getItem('fl_api')    || '';
 let SHEET_ID   = APP_SHEET_ID   || localStorage.getItem('fl_sheet')  || '';
@@ -1050,6 +1050,7 @@ function renderAdminPanel() {
           ${omgOptions}
         </select>
         <button class="btn-secondary" onclick="sparaAllaAdminPoäng()" style="padding:7px 18px;">💾 Spara alla</button>
+        <button class="btn-secondary" onclick="kopieraLagTillNyOmgång()" style="padding:7px 18px;border-color:var(--yellow);color:var(--yellow);" title="Kopierar varje användares förra lag till aktiv omgång, för de som inte uppdaterat">📋 Kopiera lag till ny omgång</button>
         <div id="adm-save-msg" style="font-size:0.85rem;"></div>
       </div>
       <table class="liga-table" style="min-width:650px;">
@@ -1077,6 +1078,18 @@ function renderAdminPanel() {
 function setAdminEdit(spelarId, field, value) {
   if (!ADMIN_EDITS[spelarId]) ADMIN_EDITS[spelarId] = {};
   ADMIN_EDITS[spelarId][field] = (field === 'bänkstart') ? parseInt(value)||0 : (value===''?'':parseInt(value)||0);
+}
+
+async function kopieraLagTillNyOmgång() {
+  const msg = document.getElementById('adm-save-msg');
+  if (!confirm('Kopiera alla användares senaste lag till aktiv omgång?\n(Påverkar bara de som INTE redan sparat ett lag för aktiv omgång.)')) return;
+  msg.innerHTML = '<span style="color:var(--muted);">Kopierar...</span>';
+  try {
+    const d = await (await fetch(`${SCRIPT_URL}?action=kopieraLagTillNyOmgång`)).json();
+    if (d.error) { msg.innerHTML = `<span style="color:var(--red);">❌ ${esc(d.error)}</span>`; return; }
+    msg.innerHTML = `<span style="color:var(--green);">✅ ${esc(d.message)}</span>`;
+    await loadData();
+  } catch(e) { msg.innerHTML = `<span style="color:var(--red);">Fel: ${esc(e.message)}</span>`; }
 }
 
 async function sparaAllaAdminPoäng() {
