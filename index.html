@@ -1085,7 +1085,7 @@ async function kopieraLagTillNyOmgång() {
   if (!confirm('Kopiera alla användares senaste lag till aktiv omgång?\n(Påverkar bara de som INTE redan sparat ett lag för aktiv omgång.)')) return;
   msg.innerHTML = '<span style="color:var(--muted);">Kopierar...</span>';
   try {
-    const d = await (await fetch(`${SCRIPT_URL}?action=kopieraLagTillNyOmgång`)).json();
+    const d = await (await fetch(`${SCRIPT_URL}?action=kopieraLag`)).json();
     if (d.error) { msg.innerHTML = `<span style="color:var(--red);">❌ ${esc(d.error)}</span>`; return; }
     msg.innerHTML = `<span style="color:var(--green);">✅ ${esc(d.message)}</span>`;
     await loadData();
